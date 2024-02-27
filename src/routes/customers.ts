@@ -1,5 +1,6 @@
 import { badRequest } from "@hapi/boom";
 import { Router } from "express";
+import mysql from "mysql2/promise";
 import { z } from "zod";
 import { pool } from "../app";
 
@@ -19,30 +20,27 @@ router.get(
 			next(badRequest("invalid param"));
 		}
 },
-	async (req, res, next) => {
+async (req, res, next) => {
+	try {
+		const connection = await pool.getConnection();
+
 		try {
-			const connection = await pool.getConnection();
+			const sqlSelect = "SELECT *";
+			const sqlFrom = "FROM customers";
+			const sqlWhere = `WHERE customers.id = ${mysql.escape(req.params.id)}`;
+			const sqlCommand = `${sqlSelect} ${sqlFrom} ${sqlWhere}`;
 
-			try {
-				const result = await connection.query(`
-            SELECT
-                *
-            FROM
-                customers
-            WHERE
-                customers.id = "${req.params.id}"
-            ;`);
-
-				res.status(200).json({ result: result.at(0) });
-			} catch (error) {
-				next(error);
-			} finally {
-				connection.release();
-			}
+			const [data, _metaData] = await connection.query(sqlCommand);
+			res.status(200).json({ result: data });
 		} catch (error) {
 			next(error);
+		} finally {
+			connection.release();
 		}
-	},
+	} catch (error) {
+		next(error);
+	}
+},
 );
 
 export default router;
