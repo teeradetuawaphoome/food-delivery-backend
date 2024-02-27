@@ -1,49 +1,46 @@
 import { badRequest } from "@hapi/boom";
 import { Router } from "express";
+import mysql from "mysql2/promise";
 import { z } from "zod";
 import { pool } from "../app";
 
 const router = Router();
+const schema = z.object({
+	id: z.coerce.number(),
+});
 
 router.get(
 	"/customers/:id",
 	(req, _res, next) => {
-		const schema = z.object({
-			id: z.coerce.number(),
-		});
+		const { success } = schema.safeParse(req.params);
 
-		const result = schema.safeParse(req.params);
-
-		if (result.success) {
+		if (success) {
 			next();
 		} else {
-			next(badRequest(result.error.message));
+			next(badRequest("invalid param"));
 		}
-	},
-	async (req, res, next) => {
+},
+async (req, res, next) => {
+	try {
+		const connection = await pool.getConnection();
+
 		try {
-			const connection = await pool.getConnection();
+			const sqlSelect = "SELECT *";
+			const sqlFrom = "FROM customers";
+			const sqlWhere = `WHERE customers.id = ${mysql.escape(req.params.id)}`;
+			const sqlCommand = `${sqlSelect} ${sqlFrom} ${sqlWhere}`;
 
-			try {
-				const result = await connection.query(`
-            SELECT
-                *
-            FROM
-                customers
-            WHERE
-                customers.id = "${req.params.id}"
-            ;`);
-
-				res.status(200).json({ result: result.at(0) });
-			} catch (error) {
-				next(error);
-			} finally {
-				connection.release();
-			}
+			const [data, _metaData] = await connection.query(sqlCommand);
+			res.status(200).json({ result: data });
 		} catch (error) {
 			next(error);
+		} finally {
+			connection.release();
 		}
-	},
+	} catch (error) {
+		next(error);
+	}
+},
 );
 
 export default router;
