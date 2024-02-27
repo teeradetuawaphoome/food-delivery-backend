@@ -8,18 +8,18 @@ const router = Router();
 router.get(
 	"/customers/:id",
 	(req, _res, next) => {
-		const schema = z.object({
-			id: z.coerce.number(),
-		});
+		const reqParamCustomer = z.object({
+		id: z.coerce.number(),
+	});
 
-		const result = schema.safeParse(req.params);
+	const { success } = reqParamCustomer.safeParse(req.params);
 
-		if (result.success) {
-			next();
-		} else {
-			next(badRequest(result.error.message));
-		}
-	},
+	if (success) {
+		next();
+	} else {
+		next(badRequest("invalid param"));
+	}
+},
 	async (req, res, next) => {
 		try {
 			const connection = await pool.getConnection();
