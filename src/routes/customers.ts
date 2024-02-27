@@ -4,21 +4,20 @@ import { z } from "zod";
 import { pool } from "../app";
 
 const router = Router();
+const schema = z.object({
+	id: z.coerce.number(),
+});
 
 router.get(
 	"/customers/:id",
 	(req, _res, next) => {
-		const reqParamCustomer = z.object({
-		id: z.coerce.number(),
-	});
+		const { success } = schema.safeParse(req.params);
 
-	const { success } = reqParamCustomer.safeParse(req.params);
-
-	if (success) {
-		next();
-	} else {
-		next(badRequest("invalid param"));
-	}
+		if (success) {
+			next();
+		} else {
+			next(badRequest("invalid param"));
+		}
 },
 	async (req, res, next) => {
 		try {
